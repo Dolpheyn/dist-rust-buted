@@ -32,8 +32,25 @@ impl SerDict for SerDictImpl {
     ) -> Result<Response<RegisterServiceResponse>, Status> {
         println!("serdict : register_service : Got a request : {:?}", request);
 
-        let res = make_example_register_service_response();
-        Ok(Response::new(res))
+        let request = request.into_inner();
+
+        {
+            let mut services_map = self.services.lock().unwrap();
+
+            let key = (request.group, request.name);
+            services_map.insert(key.clone(), (request.ip, request.port));
+
+            if let Some((ip, port)) = services_map.get(&key).clone() {
+                let res = RegisterServiceResponse {
+                    ip: ip.to_owned(),
+                    port: port.to_owned(),
+                };
+
+                return Ok(Response::new(res));
+            } else {
+                return Err(Status::internal("Failed to register service"));
+            }
+        }
     }
 
     async fn deregister_service(
@@ -45,6 +62,15 @@ impl SerDict for SerDictImpl {
             request
         );
 
+        let request = request.into_inner();
+
+        {
+            let mut services_map = self.services.lock().unwrap();
+
+            let key = (request.group, request.name);
+            services_map.remove(&key);
+        };
+
         Ok(Response::new(()))
     }
 
@@ -55,9 +81,33 @@ impl SerDict for SerDictImpl {
         println!("serdict : get_service : Got a request : {:?}", request);
 
         let request = request.into_inner();
-        let res = make_example_get_service_response(request.group, request.name);
+        let GetServiceRequest { group, name } = request;
 
-        Ok(Response::new(res))
+        let services_map = self.services.lock().unwrap();
+
+        if group.is_empty() || name.is_empty() {
+            return Err(Status::invalid_argument(
+                "group and name parameter cannot be empty",
+            ));
+        }
+
+        let key = (group.clone(), name.clone());
+        if let Some(val) = services_map.get(&key) {
+            let (group, name) = key.to_owned();
+            let (ip, port) = val.to_owned();
+
+            let res = GetServiceResponse {
+                group,
+                name,
+                ip,
+                port,
+            };
+
+            return Ok(Response::new(res));
+        }
+
+        let msg = format!("Service {group}:{name} is not registered.");
+        return Err(Status::not_found(msg));
     }
 
     async fn list_service(
@@ -82,13 +132,6 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
-}
-
-fn make_example_register_service_response() -> RegisterServiceResponse {
-    RegisterServiceResponse {
-        ip: "127.0.0.1".into(),
-        port: 50051,
-    }
 }
 
 fn make_example_get_service_response(group: String, name: String) -> GetServiceResponse {

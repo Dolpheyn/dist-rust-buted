@@ -11,13 +11,13 @@
 - Have a service as entrypoint.
 
 ## Tasks
+
+### SVC-DSC - Service Discovery svc
 - Create a service discovery system.
   - At the root of module.
   - Endpoints: RegisterService, DeregisterService
   - Basic DynamoDB table
     - PK: ServiceGroup, SK: ServiceName, IP:port (string)
-
-### SVC-DSC - Service Discovery svc
 
 #### SVC-DSC-0
 
@@ -61,3 +61,10 @@
   - ListServiceByGroupName(ListServiceByGroupNameRequest) returns ListServiceByGroupNameResponse
     - ListServiceByGroupNameRequest: group string
     - ListServiceByGroupNameResponse: repeats GetServiceResponse
+
+### SVC-MAT - Math services
+
+#### SVC-MAT-0
+
+- [ ] Create proto for math services
+  - Add, Sub, Div, Mul
