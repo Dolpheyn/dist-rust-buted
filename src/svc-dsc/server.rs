@@ -32,8 +32,25 @@ impl SerDict for SerDictImpl {
     ) -> Result<Response<RegisterServiceResponse>, Status> {
         println!("serdict : register_service : Got a request : {:?}", request);
 
-        let res = make_example_register_service_response();
-        Ok(Response::new(res))
+        let request = request.into_inner();
+
+        {
+            let mut services_map = self.services.lock().unwrap();
+
+            let key = (request.group, request.name);
+            services_map.insert(key.clone(), (request.ip, request.port));
+
+            if let Some((ip, port)) = services_map.get(&key).clone() {
+                let res = RegisterServiceResponse {
+                    ip: ip.to_owned(),
+                    port: port.to_owned(),
+                };
+
+                return Ok(Response::new(res));
+            } else {
+                return Err(Status::internal("Failed to register service"));
+            }
+        }
     }
 
     async fn deregister_service(
@@ -44,6 +61,15 @@ impl SerDict for SerDictImpl {
             "serdict : deregister_service : Got a request : {:?}",
             request
         );
+
+        let request = request.into_inner();
+
+        {
+            let mut services_map = self.services.lock().unwrap();
+
+            let key = (request.group, request.name);
+            services_map.remove(&key);
+        };
 
         Ok(Response::new(()))
     }
