@@ -1,0 +1,47 @@
+syntax = "proto3";
+
+package serdict;
+
+import "google/protobuf/empty.proto";
+
+service SerDict {
+  rpc RegisterService (RegisterServiceRequest) returns (RegisterServiceResponse);
+  rpc DeregisterService (DeregisterServiceRequest) returns (google.protobuf.Empty);
+
+  rpc GetService (GetServiceRequest) returns (GetServiceResponse);
+  rpc ListService (google.protobuf.Empty) returns (ListServiceResponse);
+}
+
+message RegisterServiceRequest {
+  string group = 1;
+  string name = 2;
+  string ip = 3;
+  uint32 port = 4;
+}
+
+message RegisterServiceResponse {
+  string ip = 3;
+  uint32 port = 4;
+}
+
+message DeregisterServiceRequest {
+  string group = 1;
+  string name = 2;
+}
+
+
+message GetServiceRequest {
+  string group = 1;
+  string name = 2;
+}
+
+message GetServiceResponse {
+  string group = 1;
+  string name = 2;
+  string ip = 3;
+  uint32 port = 4;
+}
+
+message ListServiceResponse {
+  repeated GetServiceResponse services = 1;
+}
