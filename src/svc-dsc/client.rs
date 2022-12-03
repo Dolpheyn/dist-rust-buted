@@ -66,5 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Response = {:#?}", res);
 
+    assert_eq!(res.into_inner().services.len(), 4);
+
     Ok(())
 }

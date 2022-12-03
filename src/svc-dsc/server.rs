@@ -34,23 +34,21 @@ impl SerDict for SerDictImpl {
 
         let request = request.into_inner();
 
-        {
-            let mut services_map = self.services.lock().unwrap();
+        let mut services_map = self.services.lock().unwrap();
 
-            let key = (request.group, request.name);
-            services_map.insert(key.clone(), (request.ip, request.port));
+        let key = (request.group, request.name);
+        services_map.insert(key.clone(), (request.ip, request.port));
 
-            if let Some((ip, port)) = services_map.get(&key).clone() {
-                let res = RegisterServiceResponse {
-                    ip: ip.to_owned(),
-                    port: port.to_owned(),
-                };
+        if let Some((ip, port)) = services_map.get(&key).clone() {
+            let res = RegisterServiceResponse {
+                ip: ip.to_owned(),
+                port: port.to_owned(),
+            };
 
-                return Ok(Response::new(res));
-            } else {
-                return Err(Status::internal("Failed to register service"));
-            }
+            return Ok(Response::new(res));
         }
+
+        return Err(Status::internal("Failed to register service"));
     }
 
     async fn deregister_service(
@@ -81,9 +79,25 @@ impl SerDict for SerDictImpl {
         println!("serdict : get_service : Got a request : {:?}", request);
 
         let request = request.into_inner();
-        let res = make_example_get_service_response(request.group, request.name);
 
-        Ok(Response::new(res))
+        let services_map = self.services.lock().unwrap();
+
+        let key = (request.group, request.name);
+        if let Some(val) = services_map.get(&key) {
+            let (group, name) = key.to_owned();
+            let (ip, port) = val.to_owned();
+
+            let res = GetServiceResponse {
+                group,
+                name,
+                ip,
+                port,
+            };
+
+            return Ok(Response::new(res));
+        }
+
+        return Err(Status::not_found("Service is not registered."));
     }
 
     async fn list_service(
@@ -92,8 +106,26 @@ impl SerDict for SerDictImpl {
     ) -> Result<Response<ListServiceResponse>, Status> {
         println!("serdict : list_service : Got a request : {:?}", request);
 
-        let res = make_example_list_service_response();
-        Ok(Response::new(res))
+        let services_map = self.services.lock().unwrap();
+
+        let res = ListServiceResponse {
+            services: services_map
+                .iter()
+                .map(|(key, val)| {
+                    let (group, name) = key.to_owned();
+                    let (ip, port) = val.to_owned();
+
+                    GetServiceResponse {
+                        group,
+                        name,
+                        ip,
+                        port,
+                    }
+                })
+                .collect::<Vec<GetServiceResponse>>(),
+        };
+
+        return Ok(Response::new(res));
     }
 }
 
@@ -108,31 +140,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .await?;
 
     Ok(())
-}
-
-fn make_example_register_service_response() -> RegisterServiceResponse {
-    RegisterServiceResponse {
-        ip: "127.0.0.1".into(),
-        port: 50051,
-    }
-}
-
-fn make_example_get_service_response(group: String, name: String) -> GetServiceResponse {
-    GetServiceResponse {
-        group,
-        name,
-        ip: "127.0.0.1".into(),
-        port: 50050,
-    }
-}
-fn make_example_list_service_response() -> ListServiceResponse {
-    ListServiceResponse {
-        services: vec![
-            make_example_get_service_response("core".into(), "svc-dsc".into()),
-            make_example_get_service_response("math".into(), "add".into()),
-            make_example_get_service_response("math".into(), "sub".into()),
-            make_example_get_service_response("math".into(), "mul".into()),
-            make_example_get_service_response("math".into(), "div".into()),
-        ],
-    }
 }
