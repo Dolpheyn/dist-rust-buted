@@ -2,6 +2,9 @@ pub mod gen {
     tonic::include_proto!("serdict");
 }
 
+use std::collections::HashMap;
+use std::sync::Mutex;
+
 use tonic::transport::Server;
 use tonic::{Request, Response, Status};
 
@@ -11,8 +14,15 @@ use gen::{
     RegisterServiceRequest, RegisterServiceResponse,
 };
 
+type ServiceId = (String, String);
+type ServiceAddr = (String, u32);
+
+type ServiceMap = HashMap<ServiceId, ServiceAddr>;
+
 #[derive(Debug, Default)]
-pub struct SerDictImpl {}
+pub struct SerDictImpl {
+    services: Mutex<ServiceMap>,
+}
 
 #[tonic::async_trait]
 impl SerDict for SerDictImpl {
