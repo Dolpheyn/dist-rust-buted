@@ -1,0 +1,46 @@
+syntax = "proto3";
+
+package math;
+
+service Add {
+ rpc Add (BinaryOpRequest) returns (MathResponse);
+}
+
+service Sub {
+ rpc Sub (BinaryOpRequest) returns (MathResponse);
+}
+
+service Div {
+ rpc Div (BinaryOpRequest) returns (MathResponse);
+}
+
+service Mul {
+ rpc Mul (BinaryOpRequest) returns (MathResponse);
+}
+
+service Exp {
+  rpc Exp (ExpOpRequest) returns (MathResponse);
+}
+
+service Exp2 {
+  rpc Square (UnaryOpRequest) returns (MathResponse);
+}
+
+
+message BinaryOpRequest {
+  uint32 num1 = 1;
+  uint32 num2 = 2;
+}
+
+message UnaryOpRequest {
+  uint32 num = 1;
+}
+
+message ExpOpRequest {
+  uint32 num = 1;
+  uint32 exp = 2;
+}
+
+message MathResponse {
+uint32 result = 1;
+}
