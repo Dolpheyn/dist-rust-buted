@@ -2,9 +2,13 @@ pub mod gen {
     tonic::include_proto!("hello");
 }
 
-use std::{convert::Infallible, future::Future, net::SocketAddr};
+use std::convert::Infallible;
 
-use futures::FutureExt;
+use dist_rust_buted::svc_dsc::{
+    self,
+    client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
+};
+use futures::{Future, FutureExt};
 use http::{Request as HttpRequest, Response as HttpResponse};
 use hyper::Body;
 use tokio::sync::oneshot;
@@ -29,7 +33,7 @@ impl Greeter for GreeterImpl {
         &self,
         request: Request<SayRequest>,
     ) -> Result<Response<SayResponse>, Status> {
-        println!("greeter : say_hello : Got a request : {:?}", request);
+        println!("greeter: say_hello: Got a request: {:?}", request);
 
         let res = SayResponse {
             message: format!("Hello {}!", request.into_inner().name),
@@ -39,8 +43,11 @@ impl Greeter for GreeterImpl {
     }
 }
 
+#[derive(Clone)]
 struct ServiceConfig {
-    addr: SocketAddr,
+    service_name: String,
+    host: String,
+    port: u32,
 }
 
 const SERVICE_GROUP: &str = "starter";
@@ -51,47 +58,66 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let greeter = GreeterImpl::default();
     let service = GreeterServer::new(greeter);
     let cfg = ServiceConfig {
-        addr: "[::1]:50051".parse()?,
+        service_name: "Greeter".into(),
+        host: "[::1]".into(),
+        port: 50051,
     };
 
-    let register_service = async {
-        // Get SerDict client,
+    init(&cfg).await?;
 
-        // Register service
-        println!(
-            "greeter: registering to group.name: {}.{}",
-            SERVICE_GROUP, SERVICE_NAME
-        );
-    };
-    init(register_service).await?;
+    let do_shutdown = async {
+        println!("greeter: shutting down...");
 
-    let do_shutdown = || {
-        println!("greeter: shutting down...")
         // Get SerDict client,
+        let mut svc_dsc_client = svc_dsc::client::client()
+            .await
+            .expect("cannot get svc_dsc client");
 
         // Deregister service
+        println!("greeter: deregistering self...");
+        svc_dsc_client
+            .deregister_service(DeregisterServiceRequest {
+                group: "hello".into(),
+                name: "greeter".into(),
+            })
+            .await
+            .expect("cannot deregister service");
     };
-    serve_with_shutdown(service, cfg, do_shutdown).await?;
+
+    serve_with_shutdown(service, &cfg, do_shutdown).await?;
 
     Ok(())
 }
 
-async fn init<F>(do_before: F) -> Result<(), Box<dyn std::error::Error>>
-where
-    F: Future<Output = ()>,
-{
-    do_before.await;
+async fn init(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
+    let mut svc_dsc_client = svc_dsc::client::client()
+        .await
+        .expect("unable to connect to svc_dsc");
+
+    let (ip, port) = (cfg.host.clone(), cfg.port);
+
+    println!("greeter: registering self at {}:{}", ip, port);
+    svc_dsc_client
+        .register_service(RegisterServiceRequest {
+            group: SERVICE_GROUP.into(),
+            name: SERVICE_NAME.into(),
+            ip: ip.into(),
+            port,
+        })
+        .await
+        .expect("unable to register self");
+
     Ok(())
 }
 
 // TODO: extract to common platform lib
 async fn serve_with_shutdown<S, F>(
     service: S,
-    cfg: ServiceConfig,
+    cfg: &ServiceConfig,
     on_shutdown: F,
 ) -> Result<(), Box<dyn std::error::Error>>
 where
-    F: FnOnce() -> (),
+    F: Future<Output = ()>,
     S: Service<HttpRequest<Body>, Response = HttpResponse<BoxBody>, Error = Infallible>
         + NamedService
         + Clone
@@ -101,11 +127,15 @@ where
 {
     let (shutdown_send, shutdown_recv) = oneshot::channel();
 
+    let addr = format!("{}:{}", cfg.host, cfg.port).parse()?;
+    let service_name = cfg.service_name.clone();
+
     // Serve server on another task(thread) with a shutdown message channel
     let server_task = tokio::spawn(async move {
+        println!("dst-pfm: serving {} at {}", service_name, addr);
         Server::builder()
             .add_service(service)
-            .serve_with_shutdown(cfg.addr, shutdown_recv.map(drop))
+            .serve_with_shutdown(addr, shutdown_recv.map(drop))
             .await
             .expect("failed to serve service")
     });
@@ -118,7 +148,7 @@ where
     // Send shutdown signal
     let _ = shutdown_send.send(());
 
-    on_shutdown();
+    on_shutdown.await;
 
     // Wait for server task to finish exiting
     server_task.await?;

@@ -2,8 +2,9 @@ pub mod gen {
     tonic::include_proto!("serdict");
 }
 
-use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Mutex};
+use std::{collections::HashMap, convert::Infallible, env, net::SocketAddr, sync::Mutex};
 
+use dotenv::dotenv;
 use futures::FutureExt;
 use http::{Request as HttpRequest, Response as HttpResponse};
 use hyper::Body;
@@ -169,16 +170,25 @@ impl SerDict for SerDictImpl {
 }
 
 struct ServiceConfig {
+    service_name: String,
     addr: SocketAddr,
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    dotenv().expect("missing .env file. Create .env or run from the root of project");
+
+    let host = env::var("SERVICE_DISCOVERY_HOST").expect("SERVICE_DISCOVERY_HOST must be set");
+    let port = env::var("SERVICE_DISCOVERY_PORT").expect("SERVICE_DISCOVERY_PORT must be set");
+
+    let addr = format!("{}:{}", host, port);
+    let cfg = ServiceConfig {
+        service_name: "SerDict".into(),
+        addr: addr.parse()?,
+    };
+
     let serdict = SerDictImpl::default();
     let service = SerDictServer::new(serdict);
-    let cfg = ServiceConfig {
-        addr: "[::1]:50050".parse()?,
-    };
 
     let do_shutdown = || println!("shutting down...");
 
@@ -206,6 +216,7 @@ where
 
     // Serve server on another task(thread) with a shutdown message channel
     let server_task = tokio::spawn(async move {
+        println!("dst-pfm: serving {} at {}", cfg.service_name, cfg.addr);
         Server::builder()
             .add_service(service)
             .serve_with_shutdown(cfg.addr, shutdown_recv.map(drop))

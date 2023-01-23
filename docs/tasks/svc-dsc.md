@@ -8,8 +8,8 @@
 
 ## SVC-DSC-6 - Client sdk
 
-- [ ] Add .env file storing serdict's port
-- [ ] Make client.rs expose a SerDictClient object
+- [x] Add .env file storing serdict's port
+- [x] Make client.rs expose a SerDictClient object
 
 ## SVC-DSC-5 - ListServiceByGroupName
 
