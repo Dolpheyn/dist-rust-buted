@@ -1,16 +1,18 @@
 use std::convert::Infallible;
 
-use dist_rust_buted::svc_dsc::{
-    self,
-    gen::{DeregisterServiceRequest, RegisterServiceRequest},
-};
-use dist_rust_buted::svc_mat::{
-    gen::{
-        mul_server::{Mul, MulServer},
-        BinaryOpRequest, MathResponse,
+use dist_rust_buted::{
+    svc_dsc::{
+        self,
+        gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
-    mul::SERVICE_NAME,
-    SERVICE_GROUP,
+    svc_mat::{
+        gen::{
+            mul_server::{Mul, MulServer},
+            BinaryOpRequest, MathResponse,
+        },
+        mul::{SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
+        SERVICE_GROUP,
+    },
 };
 use futures::{Future, FutureExt};
 use http::{Request as HttpRequest, Response as HttpResponse};
@@ -56,8 +58,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service = MulServer::new(mul);
     let cfg = ServiceConfig {
         service_name: SERVICE_NAME.to_string(),
-        host: "[::1]".to_string(),
-        port: 50054,
+        host: SERVICE_HOST.to_string(),
+        port: SERVICE_PORT,
     };
 
     // register to svc_dsc

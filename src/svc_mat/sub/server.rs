@@ -10,7 +10,7 @@ use dist_rust_buted::{
             sub_server::{Sub, SubServer},
             BinaryOpRequest, MathResponse,
         },
-        sub::SERVICE_NAME,
+        sub::{SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
         SERVICE_GROUP,
     },
 };
@@ -61,8 +61,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let cfg = ServiceConfig {
         service_group: SERVICE_GROUP.to_string(),
         service_name: SERVICE_NAME.to_string(),
-        host: "[::1]".to_string(),
-        port: 50055,
+        host: SERVICE_HOST.to_string(),
+        port: SERVICE_PORT,
     };
 
     init(&cfg).await?;
