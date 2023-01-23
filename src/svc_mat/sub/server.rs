@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use dist_rust_buted::{
     svc_dsc::{
         self,
-        client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
+        gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
     svc_mat::{
         gen::{

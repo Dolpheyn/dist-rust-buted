@@ -3,10 +3,10 @@ use std::convert::Infallible;
 use dist_rust_buted::{
     svc_dsc::{
         self,
-        client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
+        gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
     svc_mat::{
-        add::SERVICE_NAME,
+        add::{SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
         gen::{
             add_server::{Add, AddServer},
             BinaryOpRequest, MathResponse,
@@ -59,8 +59,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service = AddServer::new(add);
     let cfg = ServiceConfig {
         service_name: SERVICE_NAME.to_string(),
-        host: "[::1]".to_string(),
-        port: 50052,
+        host: SERVICE_HOST.to_string(),
+        port: SERVICE_PORT,
     };
 
     init(&cfg).await?;

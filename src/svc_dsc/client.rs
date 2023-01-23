@@ -1,12 +1,9 @@
-pub mod gen {
-    tonic::include_proto!("serdict");
-}
-
 use std::env;
 
 use dotenv::dotenv;
-use gen::ser_dict_client::SerDictClient;
 use tonic::transport::Channel;
+
+use crate::svc_dsc::gen::ser_dict_client::SerDictClient;
 
 pub async fn client() -> Result<SerDictClient<Channel>, Box<dyn std::error::Error>> {
     dotenv().expect("missing .env file. Create .env or run from the root of project");

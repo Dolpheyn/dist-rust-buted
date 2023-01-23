@@ -2,10 +2,10 @@ use std::convert::Infallible;
 
 use dist_rust_buted::svc_dsc::{
     self,
-    client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
+    gen::{DeregisterServiceRequest, RegisterServiceRequest},
 };
 use dist_rust_buted::svc_mat::{
-    div::SERVICE_NAME,
+    div::{SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
     gen::{
         div_server::{Div, DivServer},
         BinaryOpRequest, MathResponse,
@@ -60,8 +60,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let service = DivServer::new(div);
     let cfg = ServiceConfig {
         service_name: SERVICE_NAME.to_string(),
-        host: "[::1]".to_string(),
-        port: 50053,
+        host: SERVICE_HOST.to_string(),
+        port: SERVICE_PORT,
     };
 
     init(&cfg).await?;

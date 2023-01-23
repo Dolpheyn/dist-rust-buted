@@ -6,7 +6,7 @@ use std::convert::Infallible;
 
 use dist_rust_buted::svc_dsc::{
     self,
-    client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
+    gen::{DeregisterServiceRequest, RegisterServiceRequest},
 };
 use futures::{Future, FutureExt};
 use http::{Request as HttpRequest, Response as HttpResponse};
