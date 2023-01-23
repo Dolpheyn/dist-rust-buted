@@ -1,7 +1,3 @@
-pub mod gen {
-    tonic::include_proto!("math");
-}
-
 use std::convert::Infallible;
 
 use dist_rust_buted::{
@@ -9,7 +5,14 @@ use dist_rust_buted::{
         self,
         client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
-    svc_mat::{add::SERVICE_NAME, SERVICE_GROUP},
+    svc_mat::{
+        add::SERVICE_NAME,
+        gen::{
+            add_server::{Add, AddServer},
+            BinaryOpRequest, MathResponse,
+        },
+        SERVICE_GROUP,
+    },
 };
 use futures::Future;
 use futures::FutureExt;
@@ -22,10 +25,6 @@ use tonic::{
     transport::{NamedService, Server},
     Request, Response, Status,
 };
-
-use gen::add_server::Add;
-
-use self::gen::{add_server::AddServer, BinaryOpRequest, MathResponse};
 
 #[derive(Default)]
 struct AddImpl {}
