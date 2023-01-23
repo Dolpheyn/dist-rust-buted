@@ -4,6 +4,7 @@ pub mod gen {
 
 use std::{convert::Infallible, future::Future, net::SocketAddr};
 
+use futures::FutureExt;
 use http::{Request as HttpRequest, Response as HttpResponse};
 use hyper::Body;
 use tokio::sync::oneshot;
@@ -18,8 +19,6 @@ use gen::{
     greeter_server::{Greeter, GreeterServer},
     SayRequest, SayResponse,
 };
-
-use futures::FutureExt;
 
 #[derive(Debug, Default)]
 pub struct GreeterImpl {}

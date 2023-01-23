@@ -17,8 +17,8 @@ use tonic::{
 
 use gen::{
     ser_dict_server::{SerDict, SerDictServer},
-    DeregisterServiceRequest, GetServiceRequest, GetServiceResponse, ListServiceResponse,
-    RegisterServiceRequest, RegisterServiceResponse,
+    DeregisterServiceRequest, GetServiceRequest, GetServiceResponse, ListServiceByGroupNameRequest,
+    ListServiceResponse, RegisterServiceRequest, RegisterServiceResponse,
 };
 
 type ServiceId = (String, String);
@@ -37,7 +37,7 @@ impl SerDict for SerDictImpl {
         &self,
         request: Request<RegisterServiceRequest>,
     ) -> Result<Response<RegisterServiceResponse>, Status> {
-        println!("serdict : register_service : Got a request : {:?}", request);
+        println!("serdict: register_service: Got a request: {:?}", request);
 
         let request = request.into_inner();
 
@@ -62,10 +62,7 @@ impl SerDict for SerDictImpl {
         &self,
         request: Request<DeregisterServiceRequest>,
     ) -> Result<Response<()>, Status> {
-        println!(
-            "serdict : deregister_service : Got a request : {:?}",
-            request
-        );
+        println!("serdict: deregister_service: Got a request: {:?}", request);
 
         let request = request.into_inner();
 
@@ -83,7 +80,7 @@ impl SerDict for SerDictImpl {
         &self,
         request: Request<GetServiceRequest>,
     ) -> Result<Response<GetServiceResponse>, Status> {
-        println!("serdict : get_service : Got a request : {:?}", request);
+        println!("serdict: get_service: Got a request: {:?}", request);
 
         let request = request.into_inner();
         let GetServiceRequest { group, name } = request;
@@ -119,7 +116,7 @@ impl SerDict for SerDictImpl {
         &self,
         request: Request<()>,
     ) -> Result<Response<ListServiceResponse>, Status> {
-        println!("serdict : list_service : Got a request : {:?}", request);
+        println!("serdict: list_service: Got a request: {:?}", request);
 
         let services_map = self.service_registry.lock().unwrap();
 
@@ -139,6 +136,33 @@ impl SerDict for SerDictImpl {
                 })
                 .collect::<Vec<GetServiceResponse>>(),
         };
+
+        return Ok(Response::new(res));
+    }
+
+    async fn list_service_by_group_name(
+        &self,
+        request: Request<ListServiceByGroupNameRequest>,
+    ) -> Result<Response<ListServiceResponse>, Status> {
+        println!(
+            "serdict: list_service_by_group_name: Got a request: {:?}",
+            request
+        );
+
+        let request = request.into_inner();
+        if request.group.is_empty() {
+            return Err(Status::invalid_argument("group parameter cannot be empty"));
+        }
+
+        let res = self.list_service(Request::new(())).await?;
+        let mut res = res.into_inner();
+
+        // Filter by group
+        res.services = res
+            .services
+            .into_iter()
+            .filter(|service| service.group.eq(&request.group))
+            .collect::<Vec<_>>();
 
         return Ok(Response::new(res));
     }

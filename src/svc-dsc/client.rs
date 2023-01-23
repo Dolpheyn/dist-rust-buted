@@ -4,13 +4,22 @@ pub mod gen {
 
 use gen::ser_dict_client::SerDictClient;
 
-use crate::gen::{DeregisterServiceRequest, RegisterServiceRequest};
+use crate::gen::{DeregisterServiceRequest, ListServiceByGroupNameRequest, RegisterServiceRequest};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut client = SerDictClient::connect("http://[::1]:50050")
         .await
         .expect("failed to connect");
+
+    client
+        .register_service(RegisterServiceRequest {
+            group: "other".into(),
+            name: "hehe".into(),
+            ip: "127.0.0.1".into(),
+            port: 1336,
+        })
+        .await?;
 
     client
         .register_service(RegisterServiceRequest {
@@ -66,9 +75,29 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let res = client.list_service(()).await?;
 
-    println!("Response = {:#?}", res);
+    println!("ListService response = {:#?}", res);
+
+    assert_eq!(res.into_inner().services.len(), 5);
+
+    let res = client
+        .list_service_by_group_name(ListServiceByGroupNameRequest {
+            group: "math".into(),
+        })
+        .await?;
+
+    println!("ListServiceByGroupName({}) Response = {:#?}", "math", res);
 
     assert_eq!(res.into_inner().services.len(), 4);
+
+    let res = client
+        .list_service_by_group_name(ListServiceByGroupNameRequest {
+            group: "other".into(),
+        })
+        .await?;
+
+    println!("ListServiceByGroupName({}) Response = {:#?}", "other", res);
+
+    assert_eq!(res.into_inner().services.len(), 1);
 
     Ok(())
 }
