@@ -8,7 +8,9 @@ use crate::gen::{DeregisterServiceRequest, RegisterServiceRequest};
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let mut client = SerDictClient::connect("http://[::1]:50050").await?;
+    let mut client = SerDictClient::connect("http://[::1]:50050")
+        .await
+        .expect("failed to connect");
 
     client
         .register_service(RegisterServiceRequest {

@@ -2,14 +2,21 @@ pub mod gen {
     tonic::include_proto!("serdict");
 }
 
-use std::collections::HashMap;
-use std::sync::Mutex;
+use std::{collections::HashMap, convert::Infallible, net::SocketAddr, sync::Mutex};
 
-use tonic::transport::Server;
-use tonic::{Request, Response, Status};
+use futures::FutureExt;
+use http::{Request as HttpRequest, Response as HttpResponse};
+use hyper::Body;
+use tokio::sync::oneshot;
+use tonic::{
+    body::BoxBody,
+    codegen::Service,
+    transport::{NamedService, Server},
+    Request, Response, Status,
+};
 
-use gen::ser_dict_server::{SerDict, SerDictServer};
 use gen::{
+    ser_dict_server::{SerDict, SerDictServer},
     DeregisterServiceRequest, GetServiceRequest, GetServiceResponse, ListServiceResponse,
     RegisterServiceRequest, RegisterServiceResponse,
 };
@@ -21,7 +28,7 @@ type ServiceMap = HashMap<ServiceId, ServiceAddr>;
 
 #[derive(Debug, Default)]
 pub struct SerDictImpl {
-    services: Mutex<ServiceMap>,
+    service_registry: Mutex<ServiceMap>,
 }
 
 #[tonic::async_trait]
@@ -34,7 +41,7 @@ impl SerDict for SerDictImpl {
 
         let request = request.into_inner();
 
-        let mut services_map = self.services.lock().unwrap();
+        let mut services_map = self.service_registry.lock().unwrap();
 
         let key = (request.group, request.name);
         services_map.insert(key.clone(), (request.ip, request.port));
@@ -63,7 +70,7 @@ impl SerDict for SerDictImpl {
         let request = request.into_inner();
 
         {
-            let mut services_map = self.services.lock().unwrap();
+            let mut services_map = self.service_registry.lock().unwrap();
 
             let key = (request.group, request.name);
             services_map.remove(&key);
@@ -81,7 +88,7 @@ impl SerDict for SerDictImpl {
         let request = request.into_inner();
         let GetServiceRequest { group, name } = request;
 
-        let services_map = self.services.lock().unwrap();
+        let services_map = self.service_registry.lock().unwrap();
 
         if group.is_empty() || name.is_empty() {
             return Err(Status::invalid_argument(
@@ -114,7 +121,7 @@ impl SerDict for SerDictImpl {
     ) -> Result<Response<ListServiceResponse>, Status> {
         println!("serdict : list_service : Got a request : {:?}", request);
 
-        let services_map = self.services.lock().unwrap();
+        let services_map = self.service_registry.lock().unwrap();
 
         let res = ListServiceResponse {
             services: services_map
@@ -137,15 +144,63 @@ impl SerDict for SerDictImpl {
     }
 }
 
+struct ServiceConfig {
+    addr: SocketAddr,
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "[::1]:50050".parse()?;
     let serdict = SerDictImpl::default();
+    let service = SerDictServer::new(serdict);
+    let cfg = ServiceConfig {
+        addr: "[::1]:50050".parse()?,
+    };
 
-    Server::builder()
-        .add_service(SerDictServer::new(serdict))
-        .serve(addr)
-        .await?;
+    let do_shutdown = || println!("shutting down...");
+
+    serve_with_shutdown(service, cfg, do_shutdown).await?;
+
+    Ok(())
+}
+
+// TODO: extract to common platform lib
+async fn serve_with_shutdown<S, F>(
+    service: S,
+    cfg: ServiceConfig,
+    on_shutdown: F,
+) -> Result<(), Box<dyn std::error::Error>>
+where
+    F: FnOnce() -> (),
+    S: Service<HttpRequest<Body>, Response = HttpResponse<BoxBody>, Error = Infallible>
+        + NamedService
+        + Clone
+        + Send
+        + 'static,
+    S::Future: Send + 'static,
+{
+    let (shutdown_send, shutdown_recv) = oneshot::channel();
+
+    // Serve server on another task(thread) with a shutdown message channel
+    let server_task = tokio::spawn(async move {
+        Server::builder()
+            .add_service(service)
+            .serve_with_shutdown(cfg.addr, shutdown_recv.map(drop))
+            .await
+            .expect("failed to serve service")
+    });
+
+    // Wait for ctrl_c
+    let _ = tokio::signal::ctrl_c().await;
+
+    println!("dst-pfm: gracefully shutting down server");
+
+    // Send shutdown signal
+    let _ = shutdown_send.send(());
+
+    on_shutdown();
+
+    // Wait for server task to finish exiting
+    server_task.await?;
 
     Ok(())
 }
