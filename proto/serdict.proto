@@ -10,6 +10,7 @@ service SerDict {
 
   rpc GetService (GetServiceRequest) returns (GetServiceResponse);
   rpc ListService (google.protobuf.Empty) returns (ListServiceResponse);
+  rpc ListServiceByGroupName (ListServiceByGroupNameRequest) returns (ListServiceResponse);
 }
 
 message RegisterServiceRequest {
@@ -40,6 +41,10 @@ message GetServiceResponse {
   string name = 2;
   string ip = 3;
   uint32 port = 4;
+}
+
+message ListServiceByGroupNameRequest {
+  string group = 1;
 }
 
 message ListServiceResponse {

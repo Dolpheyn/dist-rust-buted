@@ -13,10 +13,11 @@
 
 ## SVC-DSC-5 - ListServiceByGroupName
 
-- [ ] Add endpoint: ListServiceByGroupName
+- [x] Add endpoint: ListServiceByGroupName
   - ListServiceByGroupName(ListServiceByGroupNameRequest) returns ListServiceByGroupNameResponse
     - ListServiceByGroupNameRequest: group string
     - ListServiceByGroupNameResponse: repeats GetServiceResponse
+      - Using existing ListServiceResponse instead
 
 ## SVC-DSC-4 - GetService & ListService [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/5)
 
