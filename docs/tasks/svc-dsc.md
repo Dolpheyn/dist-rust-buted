@@ -18,15 +18,15 @@
     - ListServiceByGroupNameRequest: group string
     - ListServiceByGroupNameResponse: repeats GetServiceResponse
 
-## SVC-DSC-4 - GetService & ListService
+## SVC-DSC-4 - GetService & ListService [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/5)
 
 - [x] Implement endpoints: GetService & ListService
 
-## SVC-DSC-3
+## SVC-DSC-3 [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/4)
 
 - [x] Implement endpoints: RegisterService & DeregisterService
 
-## SVC-DSC-2: In-memory service dictionary
+## SVC-DSC-2: In-memory service dictionary [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/3)
 
 - [x] Add a concurrent map to store services
   - Key: `type ServiceId = Tuple(group, svc-name)`
@@ -35,7 +35,7 @@
     - Maybe wrap in `Rc<Mutex>>`
       - `services: Rc<Mutex<HashMap<ServiceId, ServiceAddr>>`
 
-## SVC-DSC-1 - Generate
+## SVC-DSC-1 - Generate [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/2)
 
 - [x] Generate endpoints and types RegisterService(RegisterServiceRequest) returns RegisterServiceResponse
     - RegisterServiceRequest: group string, name string
@@ -50,6 +50,6 @@
     - ListServiceRequest: empty
     - ListServiceResponse: repeats GetServiceResponse
 
-## SVC-DSC-0 - Init
+## SVC-DSC-0 - Init [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/1)
 
 - [x] Make gRPC gen from protobuf works using tonic

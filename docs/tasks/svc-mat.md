@@ -17,7 +17,7 @@
 - [ ] Implement Add, Sub, Div, Mul, Exp services
   - Each is in their own directory
 
-## SVC-MAT-0
+## SVC-MAT-0 [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/6)
 
 - [x] Create proto for math services
   - Add, Sub, Div, Mul, Exp, Exp2(square)
