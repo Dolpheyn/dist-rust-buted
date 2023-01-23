@@ -29,6 +29,10 @@ edition = "2021"
   name = "svc-mat-mul"
   path = "src/svc_mat/mul/server.rs"
 
+[[bin]]
+  name = "svc-mat-sub"
+  path = "src/svc_mat/sub/server.rs"
+
 [dependencies]
 dotenv = "0.15.0"
 futures = "0.3.25"
