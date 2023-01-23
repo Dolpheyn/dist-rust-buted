@@ -7,6 +7,8 @@
   - tracing requests
   - logging
 
+![math_services_diagram](../diagrams/math-service-diagram.svg)
+
 ## SVC-MAT-2
 
 - [ ] Exp2(square) service
