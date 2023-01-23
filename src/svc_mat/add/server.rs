@@ -9,7 +9,7 @@ use dist_rust_buted::{
         self,
         client::gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
-    svc_mat::add::{SERVICE_GROUP, SERVICE_NAME},
+    svc_mat::{add::SERVICE_NAME, SERVICE_GROUP},
 };
 use futures::Future;
 use futures::FutureExt;
@@ -140,18 +140,19 @@ where
             .expect("failed to serve service")
     });
 
-    // Wait for ctrl_c
-    let _ = tokio::signal::ctrl_c().await;
-
     println!("dst-pfm: gracefully shutting down server");
 
-    // Send shutdown signal
-    let _ = shutdown_send.send(());
+    // Wait for either server_task finish or ctrl_c is pressed
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            // Send shutdown signal
+            let _ = shutdown_send.send(());
+        },
+        _ = server_task => {
+        }
+    }
 
     on_shutdown.await;
-
-    // Wait for server task to finish exiting
-    server_task.await?;
 
     Ok(())
 }
