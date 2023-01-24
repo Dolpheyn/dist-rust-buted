@@ -1,0 +1,31 @@
+math_service {
+  operations {
+    add(x, y)
+    sub(x, y)
+    div(x, y)
+    mul(x, y)
+    exp(x, y)
+    exp2(x)
+  }
+  entry {
+    calculate: calculate(expression)
+    parse: "parse() -> MathCall"
+
+  }
+    entry.calculate -> entry.parse -> operations
+}
+
+example math service journey {
+  example_calc: calculate("4 + 5 - 2")
+  parse: parse("4 + 5 - 2") -> MathCall
+  infix: "4 + 5 - 2 = - + 4 5 2"
+  parseResult: "Math::Expression(Expr {operator: Operator::Sub, children: [Math::Expression(Expr{ operator: Operator::Add, children: [Math::Value(4), Math::Value(5)] }), Math::Value(2)] })"
+  add: add(4, 5) = 9
+  sub: sub(9, 2) = 7
+
+  request -> example_calc: make request
+  example_calc -> parse -> infix -> parseResult
+  parseResult -> add: compile to service calls
+  add -> sub: "pass result from MathResult{result: 9} as left operand"
+  sub -> response: "MathResponse{ result: 7}"
+}

@@ -1,14 +1,21 @@
-pub mod gen {
-    tonic::include_proto!("hello");
-}
-
 use std::convert::Infallible;
 
-use dist_rust_buted::svc_dsc::{
-    self,
-    gen::{DeregisterServiceRequest, RegisterServiceRequest},
+use dist_rust_buted::{
+    svc_dsc::{
+        self,
+        gen::{DeregisterServiceRequest, RegisterServiceRequest},
+    },
+    svc_mat::{
+        add::{SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
+        gen::{
+            add_server::{Add, AddServer},
+            BinaryOpRequest, MathResponse,
+        },
+        SERVICE_GROUP,
+    },
 };
-use futures::{Future, FutureExt};
+use futures::Future;
+use futures::FutureExt;
 use http::{Request as HttpRequest, Response as HttpResponse};
 use hyper::Body;
 use tokio::sync::oneshot;
@@ -19,27 +26,23 @@ use tonic::{
     Request, Response, Status,
 };
 
-use gen::{
-    greeter_server::{Greeter, GreeterServer},
-    SayRequest, SayResponse,
-};
-
-#[derive(Debug, Default)]
-pub struct GreeterImpl {}
+#[derive(Default)]
+struct AddImpl {}
 
 #[tonic::async_trait]
-impl Greeter for GreeterImpl {
-    async fn say_hello(
+impl Add for AddImpl {
+    async fn add(
         &self,
-        request: Request<SayRequest>,
-    ) -> Result<Response<SayResponse>, Status> {
-        println!("greeter: say_hello: Got a request: {:?}", request);
+        request: Request<BinaryOpRequest>,
+    ) -> Result<Response<MathResponse>, Status> {
+        println!("math.add: Got a request: {:?}", request);
 
-        let res = SayResponse {
-            message: format!("Hello {}!", request.into_inner().name),
-        };
+        let request = request.into_inner();
+        let BinaryOpRequest { num1, num2 } = request;
 
-        Ok(Response::new(res))
+        let result = num1 + num2;
+
+        Ok(Response::new(MathResponse { result }))
     }
 }
 
@@ -50,23 +53,20 @@ struct ServiceConfig {
     port: u32,
 }
 
-const SERVICE_GROUP: &str = "starter";
-const SERVICE_NAME: &str = "greeter";
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let greeter = GreeterImpl::default();
-    let service = GreeterServer::new(greeter);
+    let add = AddImpl::default();
+    let service = AddServer::new(add);
     let cfg = ServiceConfig {
-        service_name: "Greeter".into(),
-        host: "[::1]".into(),
-        port: 50051,
+        service_name: SERVICE_NAME.to_string(),
+        host: SERVICE_HOST.to_string(),
+        port: SERVICE_PORT,
     };
 
     init(&cfg).await?;
 
     let do_shutdown = async {
-        println!("greeter: shutting down...");
+        println!("math.add: shutting down...");
 
         // Get SerDict client,
         let mut svc_dsc_client = svc_dsc::client::client()
@@ -74,11 +74,11 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("cannot get svc_dsc client");
 
         // Deregister service
-        println!("greeter: deregistering self...");
+        println!("math.add: deregistering self...");
         svc_dsc_client
             .deregister_service(DeregisterServiceRequest {
-                group: "hello".into(),
-                name: "greeter".into(),
+                group: SERVICE_GROUP.into(),
+                name: SERVICE_NAME.into(),
             })
             .await
             .expect("cannot deregister service");
@@ -96,7 +96,7 @@ async fn init(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
 
     let (ip, port) = (cfg.host.clone(), cfg.port);
 
-    println!("greeter: registering self at {}:{}", ip, port);
+    println!("math.add: registering self at {}:{}", ip, port);
     svc_dsc_client
         .register_service(RegisterServiceRequest {
             group: SERVICE_GROUP.into(),
@@ -110,7 +110,6 @@ async fn init(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-// TODO: extract to common platform lib
 async fn serve_with_shutdown<S, F>(
     service: S,
     cfg: &ServiceConfig,
@@ -140,18 +139,19 @@ where
             .expect("failed to serve service")
     });
 
-    // Wait for ctrl_c
-    let _ = tokio::signal::ctrl_c().await;
-
     println!("dst-pfm: gracefully shutting down server");
 
-    // Send shutdown signal
-    let _ = shutdown_send.send(());
+    // Wait for either server_task finish or ctrl_c is pressed
+    tokio::select! {
+        _ = tokio::signal::ctrl_c() => {
+            // Send shutdown signal
+            let _ = shutdown_send.send(());
+        },
+        _ = server_task => {
+        }
+    }
 
     on_shutdown.await;
-
-    // Wait for server task to finish exiting
-    server_task.await?;
 
     Ok(())
 }
