@@ -9,6 +9,13 @@
 
 ![math_services_diagram](../diagrams/math-service-diagram.svg)
 
+## SVC-MAT-3
+
+- [ ] Mat entrypoint service
+ - start all operations server
+ - parse expression into call tree
+ - eval expression tree into calls to operations server
+
 ## SVC-MAT-2
 
 - [ ] Exp2(square) service
@@ -16,7 +23,7 @@
 
 ## SVC-MAT-1
 
-- [ ] Implement Add, Sub, Div, Mul, Exp services
+- [x] Implement Add, Sub, Div, Mul, Exp services
   - Each is in their own directory
 
 ## SVC-MAT-0 [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/6)
