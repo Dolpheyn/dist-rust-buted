@@ -179,6 +179,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         service_name: SERVICE_NAME.to_string(),
         host,
         port: port.parse()?,
+        should_register: false,
     };
 
     serve_with_shutdown(service, &cfg).await?;
