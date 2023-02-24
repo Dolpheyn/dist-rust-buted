@@ -2,19 +2,14 @@ pub mod gen {
     tonic::include_proto!("serdict");
 }
 
-use std::{collections::HashMap, convert::Infallible, env, net::SocketAddr, sync::Mutex};
+use std::{collections::HashMap, env, sync::Mutex};
 
-use dotenv::dotenv;
-use futures::FutureExt;
-use http::{Request as HttpRequest, Response as HttpResponse};
-use hyper::Body;
-use tokio::sync::oneshot;
-use tonic::{
-    body::BoxBody,
-    codegen::Service,
-    transport::{NamedService, Server},
-    Request, Response, Status,
+use dist_rust_buted::{
+    dst_pfm::{serve_with_shutdown, ServiceConfig},
+    svc_dsc::{SERVICE_GROUP, SERVICE_NAME},
 };
+use dotenv::dotenv;
+use tonic::{Request, Response, Status};
 
 use gen::{
     ser_dict_server::{SerDict, SerDictServer},
@@ -169,11 +164,6 @@ impl SerDict for SerDictImpl {
     }
 }
 
-struct ServiceConfig {
-    service_name: String,
-    addr: SocketAddr,
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     dotenv().expect("missing .env file. Create .env or run from the root of project");
@@ -181,61 +171,17 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let host = env::var("SERVICE_DISCOVERY_HOST").expect("SERVICE_DISCOVERY_HOST must be set");
     let port = env::var("SERVICE_DISCOVERY_PORT").expect("SERVICE_DISCOVERY_PORT must be set");
 
-    let addr = format!("{}:{}", host, port);
-    let cfg = ServiceConfig {
-        service_name: "SerDict".into(),
-        addr: addr.parse()?,
-    };
-
     let serdict = SerDictImpl::default();
     let service = SerDictServer::new(serdict);
 
-    let do_shutdown = || println!("shutting down...");
+    let cfg = ServiceConfig {
+        service_group: SERVICE_GROUP.to_string(),
+        service_name: SERVICE_NAME.to_string(),
+        host,
+        port: port.parse()?,
+    };
 
-    serve_with_shutdown(service, cfg, do_shutdown).await?;
-
-    Ok(())
-}
-
-// TODO: extract to common platform lib
-async fn serve_with_shutdown<S, F>(
-    service: S,
-    cfg: ServiceConfig,
-    on_shutdown: F,
-) -> Result<(), Box<dyn std::error::Error>>
-where
-    F: FnOnce() -> (),
-    S: Service<HttpRequest<Body>, Response = HttpResponse<BoxBody>, Error = Infallible>
-        + NamedService
-        + Clone
-        + Send
-        + 'static,
-    S::Future: Send + 'static,
-{
-    let (shutdown_send, shutdown_recv) = oneshot::channel();
-
-    // Serve server on another task(thread) with a shutdown message channel
-    let server_task = tokio::spawn(async move {
-        println!("dst-pfm: serving {} at {}", cfg.service_name, cfg.addr);
-        Server::builder()
-            .add_service(service)
-            .serve_with_shutdown(cfg.addr, shutdown_recv.map(drop))
-            .await
-            .expect("failed to serve service")
-    });
-
-    // Wait for ctrl_c
-    let _ = tokio::signal::ctrl_c().await;
-
-    println!("dst-pfm: gracefully shutting down server");
-
-    // Send shutdown signal
-    let _ = shutdown_send.send(());
-
-    on_shutdown();
-
-    // Wait for server task to finish exiting
-    server_task.await?;
+    serve_with_shutdown(service, &cfg).await?;
 
     Ok(())
 }
