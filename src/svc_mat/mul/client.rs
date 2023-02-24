@@ -1,7 +1,7 @@
 use dotenv::dotenv;
 use tonic::transport::Channel;
 
-use crate::svc_mat::gen::mul_client::MulClient;
+pub use crate::svc_mat::gen::mul_client::MulClient;
 
 use super::{SERVICE_HOST, SERVICE_PORT};
 
