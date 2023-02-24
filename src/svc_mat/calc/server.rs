@@ -1,4 +1,4 @@
-use std::{convert::Infallible, sync::Arc};
+use std::convert::Infallible;
 
 use dist_rust_buted::{
     svc_dsc::{
@@ -6,8 +6,7 @@ use dist_rust_buted::{
         gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
     svc_mat::{
-        self,
-        calc::{parse::parse, Evaluator, MathOpClients, SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
+        calc::{self, SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
         gen::{
             calc_server::{Calc, CalcServer},
             MathExpressionRequest, MathResponse,
@@ -15,8 +14,7 @@ use dist_rust_buted::{
         SERVICE_GROUP,
     },
 };
-use futures::FutureExt;
-use futures::{lock::Mutex, Future};
+use futures::{Future, FutureExt};
 use http::{Request as HttpRequest, Response as HttpResponse};
 use hyper::Body;
 use tokio::sync::oneshot;
@@ -28,17 +26,7 @@ use tonic::{
 };
 
 #[derive(Default)]
-struct CalcImpl {
-    evaluator: Evaluator,
-}
-
-impl CalcImpl {
-    fn new(clients: MathOpClients) -> Self {
-        CalcImpl {
-            evaluator: Evaluator::new(clients),
-        }
-    }
-}
+struct CalcImpl {}
 
 #[tonic::async_trait]
 impl Calc for CalcImpl {
@@ -51,13 +39,13 @@ impl Calc for CalcImpl {
         let request = request.into_inner();
         let MathExpressionRequest { expression } = request;
 
-        let expression = parse(expression);
+        let expression = calc::parse(expression);
         println!("math.calc: parsed expression: {:?}", expression);
         if expression.is_none() {
             return Err(Status::new(Code::InvalidArgument, "the heyl mayn"));
         }
 
-        let result = self.evaluator.eval(&expression.unwrap()).await;
+        let result = calc::eval(&expression.unwrap()).await;
         match result {
             Ok(response) => {
                 return Ok(Response::new(response));
@@ -81,17 +69,7 @@ struct ServiceConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let add_client = svc_mat::add::client::client().await?;
-    let sub_client = svc_mat::sub::client::client().await?;
-    let div_client = svc_mat::div::client::client().await?;
-    let mul_client = svc_mat::mul::client::client().await?;
-
-    let calc = CalcImpl::new(MathOpClients {
-        add: Some(Arc::new(Mutex::new(add_client))),
-        sub: Some(Arc::new(Mutex::new(sub_client))),
-        div: Some(Arc::new(Mutex::new(div_client))),
-        mul: Some(Arc::new(Mutex::new(mul_client))),
-    });
+    let calc = CalcImpl::default();
     let service = CalcServer::new(calc);
     let cfg = ServiceConfig {
         service_name: SERVICE_NAME.to_string(),

@@ -10,6 +10,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!("Connected!");
 
     let cases = vec![
+        // Making sure no deadlock happens when evaluating the same operand twice
+        ("+ + 5 5 5", 15),
         (" - + 5 5 20", -10),
         ("* 5 10", 50),
         ("/ 10 2", 5),
@@ -35,6 +37,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     //      Running `target/debug/examples/calc_add`
     // Connecting to calc...
     // Connected!
+    // Sending input + + 5 5 5
+    // Response: MathResponse { result: 15 }
     // Sending input  - + 5 5 20
     // Response: MathResponse { result: -10 }
     // Sending input * 5 10
