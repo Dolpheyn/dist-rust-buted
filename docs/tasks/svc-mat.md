@@ -9,11 +9,11 @@
 
 ![math_services_diagram](../diagrams/math-service-diagram.svg)
 
-## SVC-MAT-3
+## SVC-MAT-3 [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/11)
 
-- [ ] Mat entrypoint service
+- [x] Mat entrypoint service - calc
  - start all operations server
- - parse expression into call tree
+ - parse expression into an expression tree
  - eval expression tree into calls to operations server
 
 ## SVC-MAT-2
