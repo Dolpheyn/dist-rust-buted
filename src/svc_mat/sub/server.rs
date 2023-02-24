@@ -40,7 +40,7 @@ impl Sub for SubImpl {
         let request = request.into_inner();
         let BinaryOpRequest { num1, num2 } = request;
 
-        let result = num1 + num2;
+        let result = num1 - num2;
 
         Ok(Response::new(MathResponse { result }))
     }
