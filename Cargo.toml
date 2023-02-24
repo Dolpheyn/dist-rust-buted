@@ -33,12 +33,18 @@ edition = "2021"
   name = "svc-mat-sub"
   path = "src/svc_mat/sub/server.rs"
 
+[[bin]]
+  name = "svc-mat"
+  path = "src/svc_mat/calc/server.rs"
+
 [dependencies]
+anyhow = "1.0.69"
 dotenv = "0.15.0"
 futures = "0.3.25"
 http = "0.2.8"
 hyper = "0.14.23"
 prost = "0.11.3"
+thiserror = "1.0.38"
 tokio = { version = "1.22.0", features = ["macros", "rt-multi-thread", "signal"] }
 tonic = "0.8.3"
 

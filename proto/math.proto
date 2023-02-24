@@ -26,21 +26,29 @@ service Exp2 {
   rpc Square (UnaryOpRequest) returns (MathResponse);
 }
 
+service Calc {
+  rpc Evaluate (MathExpressionRequest) returns (MathResponse);
+}
+
 
 message BinaryOpRequest {
-  uint32 num1 = 1;
-  uint32 num2 = 2;
+  int32 num1 = 1;
+  int32 num2 = 2;
 }
 
 message UnaryOpRequest {
-  uint32 num = 1;
+  int32 num = 1;
 }
 
 message ExpOpRequest {
-  uint32 num = 1;
-  uint32 exp = 2;
+  int32 num = 1;
+  int32 exp = 2;
+}
+
+message MathExpressionRequest {
+  string expression = 1;
 }
 
 message MathResponse {
-uint32 result = 1;
+  int32 result = 1;
 }

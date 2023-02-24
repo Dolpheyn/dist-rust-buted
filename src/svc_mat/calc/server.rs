@@ -6,16 +6,15 @@ use dist_rust_buted::{
         gen::{DeregisterServiceRequest, RegisterServiceRequest},
     },
     svc_mat::{
+        calc::{self, SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
         gen::{
-            sub_server::{Sub, SubServer},
-            BinaryOpRequest, MathResponse,
+            calc_server::{Calc, CalcServer},
+            MathExpressionRequest, MathResponse,
         },
-        sub::{SERVICE_HOST, SERVICE_NAME, SERVICE_PORT},
         SERVICE_GROUP,
     },
 };
-use futures::Future;
-use futures::FutureExt;
+use futures::{Future, FutureExt};
 use http::{Request as HttpRequest, Response as HttpResponse};
 use hyper::Body;
 use tokio::sync::oneshot;
@@ -23,32 +22,46 @@ use tonic::{
     body::BoxBody,
     codegen::Service,
     transport::{NamedService, Server},
-    Request, Response, Status,
+    Code, Request, Response, Status,
 };
 
 #[derive(Default)]
-struct SubImpl {}
+struct CalcImpl {}
 
 #[tonic::async_trait]
-impl Sub for SubImpl {
-    async fn sub(
+impl Calc for CalcImpl {
+    async fn evaluate(
         &self,
-        request: Request<BinaryOpRequest>,
+        request: Request<MathExpressionRequest>,
     ) -> Result<Response<MathResponse>, Status> {
-        println!("math.sub: Got a request: {:?}", request);
+        println!("math.calc: Got a request: {:?}", request);
 
         let request = request.into_inner();
-        let BinaryOpRequest { num1, num2 } = request;
+        let MathExpressionRequest { expression } = request;
 
-        let result = num1 - num2;
+        let expression = calc::parse(expression);
+        println!("math.calc: parsed expression: {:?}", expression);
+        if expression.is_none() {
+            return Err(Status::new(Code::InvalidArgument, "the heyl mayn"));
+        }
 
-        Ok(Response::new(MathResponse { result }))
+        let result = calc::eval(&expression.unwrap()).await;
+        match result {
+            Ok(response) => {
+                return Ok(Response::new(response));
+            }
+            Err(err) => {
+                return Err(Status::new(
+                    Code::Internal,
+                    format!("calc failed with reason {}", err),
+                ));
+            }
+        }
     }
 }
 
 #[derive(Clone)]
 struct ServiceConfig {
-    service_group: String,
     service_name: String,
     host: String,
     port: u32,
@@ -56,10 +69,9 @@ struct ServiceConfig {
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let sub = SubImpl::default();
-    let service = SubServer::new(sub);
+    let calc = CalcImpl::default();
+    let service = CalcServer::new(calc);
     let cfg = ServiceConfig {
-        service_group: SERVICE_GROUP.to_string(),
         service_name: SERVICE_NAME.to_string(),
         host: SERVICE_HOST.to_string(),
         port: SERVICE_PORT,
@@ -68,7 +80,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     init(&cfg).await?;
 
     let do_shutdown = async {
-        println!("math.sub: shutting down...");
+        println!("math.add: shutting down...");
 
         // Get SerDict client,
         let mut svc_dsc_client = svc_dsc::client::client()
@@ -76,7 +88,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             .expect("cannot get svc_dsc client");
 
         // Deregister service
-        println!("math.sub: deregistering self...");
+        println!("math.add: deregistering self...");
         svc_dsc_client
             .deregister_service(DeregisterServiceRequest {
                 group: SERVICE_GROUP.into(),
@@ -98,11 +110,11 @@ async fn init(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
 
     let (ip, port) = (cfg.host.clone(), cfg.port);
 
-    println!("math.sub: registering self at {}:{}", ip, port);
+    println!("math.add: registering self at {}:{}", ip, port);
     svc_dsc_client
         .register_service(RegisterServiceRequest {
-            group: cfg.service_group.clone(),
-            name: cfg.service_name.clone(),
+            group: SERVICE_GROUP.into(),
+            name: SERVICE_NAME.into(),
             ip: ip.into(),
             port,
         })
@@ -128,15 +140,15 @@ where
 {
     let (shutdown_send, shutdown_recv) = oneshot::channel();
 
-    let subr = format!("{}:{}", cfg.host, cfg.port).parse()?;
+    let addr = format!("{}:{}", cfg.host, cfg.port).parse()?;
     let service_name = cfg.service_name.clone();
 
     // Serve server on another task(thread) with a shutdown message channel
     let server_task = tokio::spawn(async move {
-        println!("dst-pfm: serving {} at {}", service_name, subr);
+        println!("dst-pfm: serving {} at {}", service_name, addr);
         Server::builder()
             .add_service(service)
-            .serve_with_shutdown(subr, shutdown_recv.map(drop))
+            .serve_with_shutdown(addr, shutdown_recv.map(drop))
             .await
             .expect("failed to serve service")
     });

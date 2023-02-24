@@ -41,7 +41,7 @@ impl Div for DivImpl {
             return Err(Status::invalid_argument("num2 cannot be 0"));
         }
 
-        let result = num1 % num2;
+        let result = num1 / num2;
 
         Ok(Response::new(MathResponse { result }))
     }
@@ -140,8 +140,6 @@ where
             .expect("failed to serve service")
     });
 
-    println!("dst-pfm: gracefully shutting down server");
-
     // Wait for either server_task finish or ctrl_c is pressed
     tokio::select! {
         _ = tokio::signal::ctrl_c() => {
@@ -151,6 +149,7 @@ where
         _ = server_task => {
         }
     }
+    println!("dst-pfm: gracefully shutting down server");
 
     on_shutdown.await;
 

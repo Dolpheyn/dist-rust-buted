@@ -2,6 +2,8 @@ pub mod gen {
     tonic::include_proto!("math");
 }
 
+pub mod calc;
+
 pub mod add;
 pub mod div;
 pub mod mul;
