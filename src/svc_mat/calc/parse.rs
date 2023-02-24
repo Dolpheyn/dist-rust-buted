@@ -14,7 +14,7 @@ pub struct Parser {
 }
 
 impl Parser {
-    pub fn new<S: Into<String>>(source: S) -> Self {
+    pub fn new(source: impl Into<String>) -> Self {
         return Self {
             col: 0,
             input: source.into(),
@@ -69,7 +69,7 @@ impl Parser {
         ret
     }
 
-    fn take_while<F: Fn(char) -> bool>(&mut self, test: F) -> String {
+    fn take_while(&mut self, test: impl Fn(char) -> bool) -> String {
         let mut ret = String::new();
         while !self.is_eol() && test(self.peek()) {
             ret.push(self.take());

@@ -12,7 +12,6 @@ use crate::svc_mat::{
     mul::client::MulClient, sub::client::SubClient,
 };
 
-use futures::lock::Mutex;
 use std::{future::Future, pin::Pin, sync::Arc};
 
 pub const SERVICE_NAME: &str = "calc";
@@ -29,7 +28,8 @@ pub enum MathError {
     ClientNotSupplied { operator: Operator },
 }
 
-type Shared<T> = Arc<Mutex<T>>;
+// A reference-counted pointer to a futures-aware mutex
+type Shared<T> = Arc<futures::lock::Mutex<T>>;
 
 #[derive(Default)]
 pub struct MathOpClients {
@@ -90,9 +90,66 @@ impl Evaluator {
 
                 Ok(result)
             }
-            Operator::Sub => unimplemented!(),
-            Operator::Mul => unimplemented!(),
-            Operator::Div => unimplemented!(),
+            Operator::Sub => {
+                if self.clients.sub.is_none() {
+                    return Err(anyhow!(MathError::ClientNotSupplied {
+                        operator: expr.operator.clone(),
+                    }));
+                }
+
+                let sub_client = Arc::clone(self.clients.sub.as_ref().unwrap());
+                let mut sub_client = sub_client.lock().await;
+
+                let result = sub_client
+                    .sub(BinaryOpRequest {
+                        num1: self.eval(&expr.children[0]).await?.result,
+                        num2: self.eval(&expr.children[1]).await?.result,
+                    })
+                    .await?
+                    .into_inner();
+
+                Ok(result)
+            }
+            Operator::Mul => {
+                if self.clients.mul.is_none() {
+                    return Err(anyhow!(MathError::ClientNotSupplied {
+                        operator: expr.operator.clone(),
+                    }));
+                }
+
+                let mul_client = Arc::clone(self.clients.mul.as_ref().unwrap());
+                let mut mul_client = mul_client.lock().await;
+
+                let result = mul_client
+                    .mul(BinaryOpRequest {
+                        num1: self.eval(&expr.children[0]).await?.result,
+                        num2: self.eval(&expr.children[1]).await?.result,
+                    })
+                    .await?
+                    .into_inner();
+
+                Ok(result)
+            }
+            Operator::Div => {
+                if self.clients.div.is_none() {
+                    return Err(anyhow!(MathError::ClientNotSupplied {
+                        operator: expr.operator.clone(),
+                    }));
+                }
+
+                let div_client = Arc::clone(self.clients.div.as_ref().unwrap());
+                let mut div_client = div_client.lock().await;
+
+                let result = div_client
+                    .div(BinaryOpRequest {
+                        num1: self.eval(&expr.children[0]).await?.result,
+                        num2: self.eval(&expr.children[1]).await?.result,
+                    })
+                    .await?
+                    .into_inner();
+
+                Ok(result)
+            }
         }
     }
 }
