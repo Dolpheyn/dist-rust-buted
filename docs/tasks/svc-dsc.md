@@ -6,6 +6,13 @@
   - Basic DynamoDB table
     - PK: ServiceGroup, SK: ServiceName, IP:port (string)
 
+## SVC-DSC-7 - Server sends heartbeat, Service discovery listens [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/13)
+
+- [x] Save last register message timestamp in service map
+- [x] after svc-dsc is served, check each service in map in interval (10 secs).
+  - If timestamp is more than 10 seconds ago, assume service is dead, deregister service.
+- [x] After serving registered services, call register in intervals(10 secs).
+
 ## SVC-DSC-6 - Client sdk
 
 - [x] Add .env file storing serdict's port

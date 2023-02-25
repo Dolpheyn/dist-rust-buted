@@ -2,9 +2,9 @@
 
 - Platform layer
 
-## DST-PFM-1 - Common lib
+## DST-PFM-1 - Common lib [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/12)
 
-- [ ] Extract platform-layer routines and utils to a common library
+- [x] Extract platform-layer routines and utils to a common library
 
 ## DST-PFM-0 - Graceful shutdown [PR](https://github.com/Dolpheyn/dist-rust-buted/pull/7)
 
