@@ -22,10 +22,6 @@ pub struct ServiceConfig {
 }
 
 async fn init_service(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
-    let mut svc_dsc_client = svc_dsc::client::client()
-        .await
-        .expect("dst-pfm::init_service: unable to connect to svc_dsc");
-
     let ServiceConfig {
         service_group,
         service_name,
@@ -35,6 +31,10 @@ async fn init_service(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Err
     } = cfg;
 
     if *should_register {
+        let mut svc_dsc_client = svc_dsc::client::client()
+            .await
+            .expect("dst-pfm::init_service: unable to connect to svc_dsc");
+
         println!(
             "dst-pfm::init_service: registering {}/{} at {}:{}",
             service_group, service_name, host, port
