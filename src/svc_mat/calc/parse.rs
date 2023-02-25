@@ -28,7 +28,6 @@ impl Parser {
 
         if self.peek().is_numeric() {
             let number = self.take_while(is_numeric);
-            dbg!(&number);
             ast = Some(ExpressionTreeNode::Val(number.parse().unwrap()));
         } else {
             let maybe_operator = self.take();
