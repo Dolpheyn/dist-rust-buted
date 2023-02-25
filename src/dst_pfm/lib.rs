@@ -1,4 +1,4 @@
-use std::convert::Infallible;
+use std::{convert::Infallible, thread, time};
 
 use futures::FutureExt;
 use http::{Request as HttpRequest, Response as HttpResponse};
@@ -10,7 +10,7 @@ use tonic::{
     transport::{NamedService, Server},
 };
 
-use crate::svc_dsc;
+use crate::svc_dsc::{self, HEARTBEAT_INTERVAL};
 
 #[derive(Clone)]
 pub struct ServiceConfig {
@@ -21,7 +21,7 @@ pub struct ServiceConfig {
     pub should_register: bool,
 }
 
-async fn init_service(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
+async fn register_service(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Error>> {
     let ServiceConfig {
         service_group,
         service_name,
@@ -30,25 +30,27 @@ async fn init_service(cfg: &ServiceConfig) -> Result<(), Box<dyn std::error::Err
         should_register,
     } = cfg;
 
-    if *should_register {
-        let mut svc_dsc_client = svc_dsc::client::client()
-            .await
-            .expect("dst-pfm::init_service: unable to connect to svc_dsc");
-
-        println!(
-            "dst-pfm::init_service: registering {}/{} at {}:{}",
-            service_group, service_name, host, port
-        );
-        svc_dsc_client
-            .register_service(svc_dsc::RegisterServiceRequest {
-                group: service_group.clone(),
-                name: service_name.clone(),
-                ip: host.into(),
-                port: *port,
-            })
-            .await
-            .expect("dst-pfm::init_service: unable to register service");
+    if !should_register {
+        return Ok(());
     }
+
+    let mut svc_dsc_client = svc_dsc::client::client()
+        .await
+        .expect("dst-pfm::init_service: unable to connect to svc_dsc");
+
+    println!(
+        "dst-pfm::init_service: registering {}/{} at {}:{}",
+        service_group, service_name, host, port
+    );
+    svc_dsc_client
+        .register_service(svc_dsc::RegisterServiceRequest {
+            group: service_group.clone(),
+            name: service_name.clone(),
+            ip: host.into(),
+            port: *port,
+        })
+        .await
+        .expect("dst-pfm::init_service: unable to register service");
 
     Ok(())
 }
@@ -65,7 +67,18 @@ where
         + 'static,
     S::Future: Send + 'static,
 {
-    init_service(&cfg).await?;
+    let register_heartbeat_task = {
+        let cfg = cfg.clone();
+        tokio::spawn(async move {
+            loop {
+                if !cfg.should_register {
+                    break;
+                }
+                let _ = register_service(&cfg).await;
+                thread::sleep(time::Duration::from_millis(HEARTBEAT_INTERVAL));
+            }
+        })
+    };
 
     let ServiceConfig {
         service_group,
@@ -75,13 +88,12 @@ where
         should_register,
     } = cfg;
 
-    let (shutdown_send, shutdown_recv) = oneshot::channel();
-
     let addr = format!("{}:{}", host, port).parse()?;
 
     // Serve server on another task(thread) with a shutdown message channel
     let name = service_name.clone();
     let group = service_group.clone();
+    let (shutdown_send, shutdown_recv) = oneshot::channel();
     let server_task = tokio::spawn(async move {
         println!(
             "dst-pfm::serve_with_shutdown: serving {}/{} at {}",
@@ -111,6 +123,9 @@ where
 
     let do_shutdown = async {
         if *should_register {
+            // Stop registering heartbeat
+            drop(register_heartbeat_task);
+
             // Get SerDict client,
             let mut svc_dsc_client = svc_dsc::client::client()
                 .await
