@@ -1,6 +1,7 @@
 pub mod client;
 mod expression;
 pub mod parse;
+pub use parse::parse;
 
 use anyhow::{anyhow, Result};
 use thiserror::Error;
@@ -15,11 +16,6 @@ pub const SERVICE_HOST: &str = "[::1]";
 pub const SERVICE_PORT: u32 = 50056;
 
 type MathResult = Result<MathResponse>;
-
-pub fn parse<S: Into<String>>(source: S) -> Option<ExpressionTreeNode> {
-    let mut parser = parse::Parser::new(source);
-    parser.parse()
-}
 
 #[derive(Error, Debug)]
 pub enum MathError {

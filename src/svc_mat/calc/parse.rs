@@ -2,6 +2,11 @@ use crate::svc_mat::calc::expression::ExpressionTreeNode;
 
 use super::expression::{Expression, Operator};
 
+pub fn parse<S: Into<String>>(source: S) -> Option<ExpressionTreeNode> {
+    let mut parser = Parser::new(source);
+    parser.parse()
+}
+
 pub struct Parser {
     // col is 0-indexed
     col: usize,
