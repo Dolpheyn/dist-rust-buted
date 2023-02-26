@@ -16,11 +16,19 @@ env:
 
 jobs:
 
-  test:
+  build-test-lint:
     runs-on: ubuntu-18.04
     steps:
       - name: Checkout
         uses: actions/checkout@v2
+      - name: Cache
+        uses: actions/cache@v2
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
       - name: Setup protoc
         uses: arduino/setup-protoc@v1.1.2
       - name: Install Rust toolchain
@@ -29,26 +37,11 @@ jobs:
           toolchain: ${{ env.RUST_VERSION_NIGHTLY }}
           profile: minimal
           override: true
+          components: rustfmt, clippy
       - name: Build
         run: cargo build --all-targets
       - name: Test
         run: cargo test
-
-  lint-rust:
-    runs-on: ubuntu-18.04
-    needs: test
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-      - name: Setup protoc
-        uses: arduino/setup-protoc@v1.1.2
-      - name: Install Rust toolchain
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: ${{ env.RUST_VERSION_NIGHTLY }}
-          profile: minimal
-          components: rustfmt, clippy
-          override: true
       - name: Run clippy
         run: cargo clippy --all-targets -- -D warnings $(cat .lints | cut -f1 -d"#" | tr '\n' ' ')
       - name: Run rustfmt
