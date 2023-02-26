@@ -2,6 +2,7 @@ pub mod gen {
     tonic::include_proto!("math");
 }
 
+/// Entrypoint service - parses and evaluates math expressions in a distributed manner
 pub mod calc;
 
 pub mod add;

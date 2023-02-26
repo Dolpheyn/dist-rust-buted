@@ -15,7 +15,7 @@ edition = "2021"
 
 [[bin]]
   name = "svc-dsc"
-  path = "src/svc_dsc/server.rs"
+  path = "src/svc_dsc/server/main.rs"
 
 [[bin]]
   name = "svc-mat-add"
