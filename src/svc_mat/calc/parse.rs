@@ -10,10 +10,10 @@ pub struct Parser {
 
 impl Parser {
     pub fn new(source: impl Into<String>) -> Self {
-        return Self {
+        Self {
             col: 0,
             input: source.into(),
-        };
+        }
     }
 
     pub fn parse(&mut self) -> Option<ExpressionTreeNode> {

@@ -71,12 +71,9 @@ impl SerDict for SerDictImpl {
         let key = (request.group, request.name);
         services_map.insert(key.clone(), ServiceRecord::new((request.ip, request.port)));
 
-        if let Some(record) = services_map.get(&key).clone() {
+        if let Some(record) = services_map.get(&key) {
             let (ip, port) = record.addr.to_owned();
-            let res = RegisterServiceResponse {
-                ip: ip.to_owned(),
-                port: port.to_owned(),
-            };
+            let res = RegisterServiceResponse { ip, port };
 
             return Ok(Response::new(res));
         }
